@@ -81,8 +81,9 @@ releases:
           keycloakRealmUrlExternal: {{ .Values.auth.keycloakRealmUrlExternal }}
           clientId: urbalytix
           clientSecret: {{ .Values.auth.client_secret }}
-        database:
-          password: {{ .Values.dbpasswords.urbalytix }}
+        postgresql:
+          auth:
+            password: {{ .Values.dbpasswords.urbalytix }}
         ingress:
           enabled: true
           hosts:
@@ -96,7 +97,7 @@ releases:
               secretName: urbalytix.{{ .Values.hostname }}
 
   - name: grafana
-    installed: false
+    installed: true
     namespace: {{ .Values.namespace }}
     chart: grafana/grafana
     version: 9.2.10
@@ -128,6 +129,8 @@ releases:
                 secureJsonData:
                   password: '{{ .Values.dbpasswords.urbalytix }}'
         assertNoLeakedSecrets: false
+        rbac:
+          create: false
         grafana.ini:
           server:
             root_url: http{{- if .Values.tls }}s{{- end }}://{{ .Values.dashboard.domain_prefix }}.{{ .Values | get "hostname" "localhost" }}/
@@ -136,10 +139,10 @@ releases:
             name: Keycloak
             allow_sign_up: true
             scopes: openid profile email
-            client_id: observatory-config
+            client_id: urbalytix
             client_secret: {{ .Values.auth.client_secret }}
-            auth_url: 'http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values | get "hostname" "localhost" }}/realms/observatory-config/protocol/openid-connect/auth'
-            token_url: 'http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values | get "hostname" "localhost" }}/realms/observatory-config/protocol/openid-connect/token'
-            api_url: 'http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values | get "hostname" "localhost" }}/realms/observatory-config/protocol/openid-connect/userinfo'
+            auth_url: 'http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values | get "hostname" "localhost" }}/realms/urbalytix/protocol/openid-connect/auth'
+            token_url: 'http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values | get "hostname" "localhost" }}/realms/urbalytix/protocol/openid-connect/token'
+            api_url: 'http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values | get "hostname" "localhost" }}/realms/urbalytix/protocol/openid-connect/userinfo'
             role_attribute_path: contains(roles[*], 'admin') && 'Admin' || contains(roles[*], 'dev') && 'Editor' || 'Viewer'
             allow_assign_grafana_admin: true
