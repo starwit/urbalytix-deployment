@@ -1,0 +1,141 @@
+repositories:
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+  - name: bitnamicharts
+    url: registry-1.docker.io/bitnamicharts
+    oci: true
+  - name: starwitorg
+    url: registry-1.docker.io/starwitorg
+    oci: true
+
+helmDefaults:
+  wait: true
+
+environments:
+  default:
+    values:
+      - namespace: urbalytix
+        hostname: cluster.local
+        tls: false
+        auth:
+          client_secret: {{ requiredEnv "CLIENT_SECRET" }}
+
+        app:
+          context_path: ""
+          spring_data: # Configuration to connect to Redis/ValKey
+            redis_active: true # if true connection config is used
+            stream_prefix: aggregator
+            redis_host: valkey-primary.observatory-data.svc.cluster.local
+            redis_port: 6379
+            redis_stream_ids: stream1
+        dbpasswords: 
+          urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
+        dashboard:
+          domain_prefix: grafana
+  wob-staging:
+    values:
+      - namespace: urbalytix
+        hostname: staging.data-wolfsburg.de
+        tls: false
+        auth:
+          client_secret: {{ requiredEnv "CLIENT_SECRET" }}
+
+        app:
+          context_path: ""
+          spring_data: # Configuration to connect to Redis/ValKey
+            redis_active: true # if true connection config is used
+            stream_prefix: aggregator
+            redis_host: valkey-primary.observatory-data.svc.cluster.local
+            redis_port: 6379
+            redis_stream_ids: stream1
+        dbpasswords: 
+          urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
+        dashboard:
+          domain_prefix: grafana
+
+---
+releases:
+  - name: urbalytix
+    installed: true
+    namespace: {{ .Values.namespace }}
+    chart: starwitorg/urbalytix-chart 
+    version: 0.0.6
+    values:
+      - image:
+          tag: 0.0.6
+        app:
+          context_path: {{ .Values.app.context_path | default "" }}
+          spring_data: # Configuration to connect to Redis/ValKey
+            redis_active: {{ .Values.app.spring_data.redis_active | default false}}
+            stream_prefix: {{ .Values.app.spring_data.stream_prefix | default "aggregator" }}
+            redis_host: {{ .Values.app.spring_data.redis_host | default "valkey-primary.observatory-data.svc.cluster.local" }}
+            redis_port: {{ .Values.app.spring_data.redis_port | default 6379 | int }}
+            redis_stream_ids: {{ .Values.app.spring_data.redis_stream_ids | default "stream1"}}
+        auth:
+          enabled: true
+          keycloakRealmUrlInternal: http://keycloak.{{ .Values.namespace }}.svc.cluster.local/realms/urbalytix
+          keycloakRealmUrlExternal: http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values.hostname }}/realms/urbalytix
+          clientId: urbalytix
+          clientSecret: {{ .Values.auth.client_secret }}
+        database:
+          password: {{ .Values.dbpasswords.urbalytix }}
+        ingress:
+          enabled: true
+          hosts:
+            - host: urbalytix.{{ .Values.hostname }}
+              paths:
+                - path: /
+                  pathType: ImplementationSpecific
+          tls:
+            - hosts:
+              - spc.{{ .Values.hostname }}
+              secretName: urbalytix.{{ .Values.hostname }}
+
+  - name: grafana
+    installed: false
+    namespace: {{ .Values.namespace }}
+    chart: grafana/grafana
+    version: 7.3.7  
+    values:
+      - ingress:
+          enabled: true
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+          hosts:
+            - {{ .Values.dashboard.domain_prefix }}.{{ .Values | get "hostname" "localhost" }}
+          path: /
+          tls:
+          - hosts:
+            - {{ .Values.dashboard.domain_prefix }}.{{ .Values | get "hostname" "localhost" }}
+            secretName: {{ .Values.dashboard.domain_prefix }}.{{ .Values | get "hostname" "localhost" }}
+
+        persistence:
+          enabled: true
+        datasources:
+          datasources.yaml:
+            apiVersion: 1
+            datasources:
+              - name: Urbalytix Database
+                type: postgres
+                editable: true
+                url: {{ .Values.namespace }}-postgresql.{{ .Values.namespace }}.svc.cluster.local:5432
+                user: urbalytix
+                database: urbalytix
+                secureJsonData:
+                  password: '{{ .Values.dbpasswords.urbalytix }}'
+        assertNoLeakedSecrets: false
+        grafana.ini:
+          server:
+            root_url: http{{- if .Values.tls }}s{{- end }}://{{ .Values.dashboard.domain_prefix }}.{{ .Values | get "hostname" "localhost" }}/
+          auth.generic_oauth:
+            enabled: true
+            name: Keycloak
+            allow_sign_up: true
+            scopes: openid profile email
+            client_id: observatory-config
+            client_secret: {{ .Values.auth.client_secret }}
+            auth_url: 'http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values | get "hostname" "localhost" }}/realms/observatory-config/protocol/openid-connect/auth'
+            token_url: 'http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values | get "hostname" "localhost" }}/realms/observatory-config/protocol/openid-connect/token'
+            api_url: 'http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values | get "hostname" "localhost" }}/realms/observatory-config/protocol/openid-connect/userinfo'
+            role_attribute_path: contains(roles[*], 'admin') && 'Admin' || contains(roles[*], 'dev') && 'Editor' || 'Viewer'
+            allow_assign_grafana_admin: true
