@@ -19,6 +19,8 @@ environments:
         tls: false
         auth:
           client_secret: {{ requiredEnv "CLIENT_SECRET" }}
+          keycloakRealmUrlInternal: http://keycloak.auth.svc.cluster.local/realms/urbalytix
+          keycloakRealmUrlExternal: https://auth.cluster.local/realms/urbalytix
 
         app:
           context_path: ""
@@ -39,6 +41,8 @@ environments:
         tls: false
         auth:
           client_secret: {{ requiredEnv "CLIENT_SECRET" }}
+          keycloakRealmUrlInternal: http://keycloak.observatory-data.svc.cluster.local/realms/urbalytix
+          keycloakRealmUrlExternal: https://auth.staging.data-wolfsburg.de/realms/urbalytix
 
         app:
           context_path: ""
@@ -73,8 +77,8 @@ releases:
             redis_stream_ids: {{ .Values.app.spring_data.redis_stream_ids | default "stream1"}}
         auth:
           enabled: true
-          keycloakRealmUrlInternal: http://keycloak.{{ .Values.namespace }}.svc.cluster.local/realms/urbalytix
-          keycloakRealmUrlExternal: http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values.hostname }}/realms/urbalytix
+          keycloakRealmUrlInternal: {{ .Values.auth.keycloakRealmUrlInternal }}
+          keycloakRealmUrlExternal: {{ .Values.auth.keycloakRealmUrlExternal }}
           clientId: urbalytix
           clientSecret: {{ .Values.auth.client_secret }}
         database:
@@ -95,7 +99,7 @@ releases:
     installed: false
     namespace: {{ .Values.namespace }}
     chart: grafana/grafana
-    version: 7.3.7  
+    version: 9.2.10
     values:
       - ingress:
           enabled: true
