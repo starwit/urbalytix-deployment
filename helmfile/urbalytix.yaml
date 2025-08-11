@@ -24,6 +24,10 @@ environments:
 
         app:
           context_path: ""
+          feature_collection:
+            enabled: true
+            endpoint: https://www.was-wob.de/apiNodes
+            secret: {{ requiredEnv "FEATURE_COLLECTION_SECRET" }}
           spring_data: # Configuration to connect to Redis/ValKey
             redis_active: true # if true connection config is used
             stream_prefix: aggregator
@@ -46,12 +50,16 @@ environments:
 
         app:
           context_path: ""
+          feature_collection:
+            enabled: true
+            endpoint: https://www.was-wob.de/apiNodes
+            secret: {{ requiredEnv "FEATURE_COLLECTION_SECRET" }}
           spring_data: # Configuration to connect to Redis/ValKey
             redis_active: true # if true connection config is used
             stream_prefix: aggregator
             redis_host: valkey-primary.observatory-data.svc.cluster.local
             redis_port: 6379
-            redis_stream_ids: stream1
+            redis_stream_ids: dev-orin
         dbpasswords: 
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
         dashboard:
@@ -63,12 +71,16 @@ releases:
     installed: true
     namespace: {{ .Values.namespace }}
     chart: starwitorg/urbalytix-chart 
-    version: 0.0.6
+    version: 0.0.8
     values:
       - image:
-          tag: 0.0.6
+          tag: 0.0.8
         app:
           context_path: {{ .Values.app.context_path | default "" }}
+          feature_collection:
+            enabled: {{ .Values.app.feature_collection.enabled }}
+            endpoint: {{ .Values.app.feature_collection.endpoint }}
+            secret: {{ .Values.app.feature_collection.secret }}
           spring_data: # Configuration to connect to Redis/ValKey
             redis_active: {{ .Values.app.spring_data.redis_active | default false}}
             stream_prefix: {{ .Values.app.spring_data.stream_prefix | default "aggregator" }}
@@ -97,7 +109,7 @@ releases:
               secretName: urbalytix.{{ .Values.hostname }}
 
   - name: grafana
-    installed: true
+    installed: false
     namespace: {{ .Values.namespace }}
     chart: grafana/grafana
     version: 9.2.10
