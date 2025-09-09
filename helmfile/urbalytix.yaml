@@ -33,7 +33,9 @@ environments:
             stream_prefix: aggregator
             redis_host: valkey-primary.observatory-data.svc.cluster.local
             redis_port: 6379
-            redis_stream_ids: stream1
+            aggregator_stream_prefix: aggregator # if aggregation messages are published under a different name
+            positionsource_stream_prefix: positionsource # if position messages are published under a different name
+            detection_stream_prefix: objectdetector # if detection messages are published under a different name
         dbpasswords: 
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
         dashboard:
@@ -59,7 +61,9 @@ environments:
             stream_prefix: aggregator
             redis_host: valkey-primary.observatory-data.svc.cluster.local
             redis_port: 6379
-            redis_stream_ids: dev-orin
+            aggregator_stream_prefix: aggregator # if aggregation messages are published under a different name
+            positionsource_stream_prefix: positionsource # if position messages are published under a different name
+            detection_stream_prefix: objectdetector # if detection messages are published under a different name
         dbpasswords: 
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
         dashboard:
@@ -71,10 +75,10 @@ releases:
     installed: true
     namespace: {{ .Values.namespace }}
     chart: starwitorg/urbalytix-chart 
-    version: 0.1.0
+    version: 0.2.0
     values:
       - image:
-          tag: 0.1.0
+          tag: 0.2.0
         app:
           context_path: {{ .Values.app.context_path | default "" }}
           feature_collection:
@@ -86,7 +90,9 @@ releases:
             stream_prefix: {{ .Values.app.spring_data.stream_prefix | default "aggregator" }}
             redis_host: {{ .Values.app.spring_data.redis_host | default "valkey-primary.observatory-data.svc.cluster.local" }}
             redis_port: {{ .Values.app.spring_data.redis_port | default 6379 | int }}
-            redis_stream_ids: {{ .Values.app.spring_data.redis_stream_ids | default "stream1"}}
+            aggregator_stream_prefix: {{ .Values.app.spring_data.aggregator_stream_prefix | default "aggregator" }}
+            positionsource_stream_prefix: {{ .Values.app.spring_data.positionsource_stream_prefix | default "positionsource" }}
+            detection_stream_prefix: {{ .Values.app.spring_data.detection_stream_prefix | default "objectdetector" }}
         auth:
           enabled: true
           keycloakRealmUrlInternal: {{ .Values.auth.keycloakRealmUrlInternal }}
@@ -107,6 +113,9 @@ releases:
             - hosts:
               - spc.{{ .Values.hostname }}
               secretName: urbalytix.{{ .Values.hostname }}
+        extraEnv: |
+          - name: SERVER_COMPRESSION_ENABLED
+            value: "true"
 
   - name: grafana
     installed: false
