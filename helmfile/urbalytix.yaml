@@ -75,10 +75,10 @@ releases:
     installed: true
     namespace: {{ .Values.namespace }}
     chart: starwitorg/urbalytix-chart 
-    version: 0.2.0
+    version: 0.2.4
     values:
       - image:
-          tag: 0.2.0
+          tag: 0.2.4
         app:
           context_path: {{ .Values.app.context_path | default "" }}
           feature_collection:
@@ -102,6 +102,14 @@ releases:
         postgresql:
           auth:
             password: {{ .Values.dbpasswords.urbalytix }}
+          primary:
+            resources:
+              requests:
+                memory: "512Mi"
+                cpu: "500m"
+              limits:
+                memory: "1Gi"
+                cpu: "1000m"
         ingress:
           enabled: true
           hosts:
