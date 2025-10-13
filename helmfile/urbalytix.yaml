@@ -1,9 +1,6 @@
 repositories:
   - name: grafana
     url: https://grafana.github.io/helm-charts
-  - name: bitnamicharts
-    url: registry-1.docker.io/bitnamicharts
-    oci: true
   - name: starwitorg
     url: registry-1.docker.io/starwitorg
     oci: true
@@ -37,6 +34,7 @@ environments:
             positionsource_stream_prefix: positionsource # if position messages are published under a different name
             detection_stream_prefix: objectdetector # if detection messages are published under a different name
         dbpasswords: 
+          postgres: {{ requiredEnv "DB_ROOT_PASSWORD" }}
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
         dashboard:
           domain_prefix: grafana
@@ -72,13 +70,13 @@ environments:
 ---
 releases:
   - name: urbalytix
-    installed: true
+    installed: false
     namespace: {{ .Values.namespace }}
     chart: starwitorg/urbalytix-chart 
-    version: 0.2.4
+    version: 0.2.5
     values:
       - image:
-          tag: 0.2.4
+          tag: 0.2.5
         app:
           context_path: {{ .Values.app.context_path | default "" }}
           feature_collection:
@@ -99,17 +97,13 @@ releases:
           keycloakRealmUrlExternal: {{ .Values.auth.keycloakRealmUrlExternal }}
           clientId: urbalytix
           clientSecret: {{ .Values.auth.client_secret }}
-        postgresql:
-          auth:
-            password: {{ .Values.dbpasswords.urbalytix }}
-          primary:
-            resources:
-              requests:
-                memory: "512Mi"
-                cpu: "500m"
-              limits:
-                memory: "1Gi"
-                cpu: "1000m"
+        database:
+          hostname: timescaledb-chart-timescale.{{ .Values.namespace }}.svc.cluster.local
+          port: 5432
+          database: urbalytix
+          username: urbalytix
+          password: {{ .Values.dbpasswords.urbalytix }}
+
         ingress:
           enabled: true
           hosts:
@@ -124,6 +118,32 @@ releases:
         extraEnv: |
           - name: SERVER_COMPRESSION_ENABLED
             value: "true"
+
+  - name: timescale
+    installed: false
+    namespace: {{ .Values.namespace }}
+    chart: starwitorg/timescaledb-chart
+    version: 1.2.4
+    values:
+      - postgresql:
+          password: {{ .Values.dbpasswords.urbalytix }}
+        init:
+          enabled: true
+          init_user_db: |
+            -- Create schemata and users
+            CREATE EXTENSION IF NOT EXISTS timescaledb;
+            CREATE USER urbalytix WITH PASSWORD '{{ .Values.dbpasswords.urbalytix }}';    
+            CREATE DATABASE "urbalytix" owner urbalytix;
+
+          init_tables: |  
+            -- empty
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
 
   - name: grafana
     installed: false
