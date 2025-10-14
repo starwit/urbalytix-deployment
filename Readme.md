@@ -1,10 +1,22 @@
 # Urbalytix Deployment
 
-This repo contains Helmfile configuration and Docker compose scripts, to run Urbalytix application. See [Urbalytix repository](https://github.com/starwit/Urbalytix) for more information about the appllication.
+This repo contains Helmfile configuration and Docker compose scripts, to run Urbalytix application. See [Urbalytix repository](https://github.com/starwit/Urbalytix) for more information about the application.
 
 ## Helmfile
 
 Helmfile is a powerful tool, to deploy multiple Helm charts. See folder [helmfile](helmfile/) for details how to install Urbalytix using Helmfile.
+
+Installation:
+
+1. Copy env.sh-template to env.sh
+2. Set variables to strong passwords
+3. Run Helmfile deployment
+    ```bash
+    # compute changes to cluster
+    helmfile -e environment diff -f urbalytix.yaml 
+    # run actual deployment
+    helmfile -e default apply -f urbalytix.yaml 
+    ```
 
 ## Docker Compose
 TODO

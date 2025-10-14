@@ -4,6 +4,8 @@ repositories:
   - name: starwitorg
     url: registry-1.docker.io/starwitorg
     oci: true
+  - name: valkey
+    url: https://valkey.io/valkey-helm/
 
 helmDefaults:
   wait: true
@@ -28,7 +30,7 @@ environments:
           spring_data: # Configuration to connect to Redis/ValKey
             redis_active: true # if true connection config is used
             stream_prefix: aggregator
-            redis_host: valkey-primary.observatory-data.svc.cluster.local
+            redis_host: valkey.urbalytix.svc.cluster.local
             redis_port: 6379
             aggregator_stream_prefix: aggregator # if aggregation messages are published under a different name
             positionsource_stream_prefix: positionsource # if position messages are published under a different name
@@ -38,6 +40,7 @@ environments:
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
         dashboard:
           domain_prefix: grafana
+        valkey_enabled: true
   wob-staging:
     values:
       - namespace: urbalytix
@@ -66,11 +69,12 @@ environments:
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
         dashboard:
           domain_prefix: grafana
+        valkey_enabled: false
 
 ---
 releases:
   - name: urbalytix
-    installed: false
+    installed: true
     namespace: {{ .Values.namespace }}
     chart: starwitorg/urbalytix-chart 
     version: 0.2.5
@@ -120,7 +124,7 @@ releases:
             value: "true"
 
   - name: timescale
-    installed: false
+    installed: true
     namespace: {{ .Values.namespace }}
     chart: starwitorg/timescaledb-chart
     version: 1.2.4
@@ -130,8 +134,9 @@ releases:
         init:
           enabled: true
           init_user_db: |
-            -- Create schemata and users
+            -- Create schemata, users and extenions
             CREATE EXTENSION IF NOT EXISTS timescaledb;
+            CREATE EXTENSION postgis;
             CREATE USER urbalytix WITH PASSWORD '{{ .Values.dbpasswords.urbalytix }}';    
             CREATE DATABASE "urbalytix" owner urbalytix;
 
@@ -144,6 +149,11 @@ releases:
           limits:
             memory: "1Gi"
             cpu: "1000m"
+
+  - name: valkey
+    installed: {{ .Values.valkey_enabled }}
+    namespace: {{ .Values.namespace }}
+    chart: valkey/valkey
 
   - name: grafana
     installed: false
