@@ -69,7 +69,7 @@ environments:
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
         dashboard:
           domain_prefix: grafana
-        valkey_enabled: false
+        valkey_enabled: false # means there is already a valkey/redis instance
 
 ---
 releases:
@@ -77,10 +77,10 @@ releases:
     installed: true
     namespace: {{ .Values.namespace }}
     chart: starwitorg/urbalytix-chart 
-    version: 0.2.5
+    version: 0.3.0
     values:
       - image:
-          tag: 0.2.5
+          tag: 0.3.0
         app:
           context_path: {{ .Values.app.context_path | default "" }}
           feature_collection:
