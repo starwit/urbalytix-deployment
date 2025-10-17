@@ -1,12 +1,11 @@
 repositories:
   - name: grafana
     url: https://grafana.github.io/helm-charts
-  - name: bitnamicharts
-    url: registry-1.docker.io/bitnamicharts
-    oci: true
   - name: starwitorg
     url: registry-1.docker.io/starwitorg
     oci: true
+  - name: valkey
+    url: https://valkey.io/valkey-helm/
 
 helmDefaults:
   wait: true
@@ -31,15 +30,17 @@ environments:
           spring_data: # Configuration to connect to Redis/ValKey
             redis_active: true # if true connection config is used
             stream_prefix: aggregator
-            redis_host: valkey-primary.observatory-data.svc.cluster.local
+            redis_host: valkey.urbalytix.svc.cluster.local
             redis_port: 6379
             aggregator_stream_prefix: aggregator # if aggregation messages are published under a different name
             positionsource_stream_prefix: positionsource # if position messages are published under a different name
             detection_stream_prefix: objectdetector # if detection messages are published under a different name
         dbpasswords: 
+          postgres: {{ requiredEnv "DB_ROOT_PASSWORD" }}
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
         dashboard:
           domain_prefix: grafana
+        valkey_enabled: true
   wob-staging:
     values:
       - namespace: urbalytix
@@ -68,6 +69,7 @@ environments:
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
         dashboard:
           domain_prefix: grafana
+        valkey_enabled: false # means there is already a valkey/redis instance
 
 ---
 releases:
@@ -75,10 +77,10 @@ releases:
     installed: true
     namespace: {{ .Values.namespace }}
     chart: starwitorg/urbalytix-chart 
-    version: 0.2.4
+    version: 0.3.0
     values:
       - image:
-          tag: 0.2.4
+          tag: 0.3.0
         app:
           context_path: {{ .Values.app.context_path | default "" }}
           feature_collection:
@@ -99,17 +101,13 @@ releases:
           keycloakRealmUrlExternal: {{ .Values.auth.keycloakRealmUrlExternal }}
           clientId: urbalytix
           clientSecret: {{ .Values.auth.client_secret }}
-        postgresql:
-          auth:
-            password: {{ .Values.dbpasswords.urbalytix }}
-          primary:
-            resources:
-              requests:
-                memory: "512Mi"
-                cpu: "500m"
-              limits:
-                memory: "1Gi"
-                cpu: "1000m"
+        database:
+          hostname: timescaledb-chart-timescale.{{ .Values.namespace }}.svc.cluster.local
+          port: 5432
+          database: urbalytix
+          username: urbalytix
+          password: {{ .Values.dbpasswords.urbalytix }}
+
         ingress:
           enabled: true
           hosts:
@@ -124,6 +122,38 @@ releases:
         extraEnv: |
           - name: SERVER_COMPRESSION_ENABLED
             value: "true"
+
+  - name: timescale
+    installed: true
+    namespace: {{ .Values.namespace }}
+    chart: starwitorg/timescaledb-chart
+    version: 1.2.4
+    values:
+      - postgresql:
+          password: {{ .Values.dbpasswords.urbalytix }}
+        init:
+          enabled: true
+          init_user_db: |
+            -- Create schemata, users and extenions
+            CREATE EXTENSION IF NOT EXISTS timescaledb;
+            CREATE EXTENSION postgis;
+            CREATE USER urbalytix WITH PASSWORD '{{ .Values.dbpasswords.urbalytix }}';    
+            CREATE DATABASE "urbalytix" owner urbalytix;
+
+          init_tables: |  
+            -- empty
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+
+  - name: valkey
+    installed: {{ .Values.valkey_enabled }}
+    namespace: {{ .Values.namespace }}
+    chart: valkey/valkey
 
   - name: grafana
     installed: false
