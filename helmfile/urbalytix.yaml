@@ -77,10 +77,10 @@ releases:
     installed: true
     namespace: {{ .Values.namespace }}
     chart: starwitorg/urbalytix-chart 
-    version: 0.3.0
+    version: 0.4.1
     values:
       - image:
-          tag: 0.3.0
+          tag: 0.4.1
         app:
           context_path: {{ .Values.app.context_path | default "" }}
           feature_collection:
@@ -154,54 +154,3 @@ releases:
     installed: {{ .Values.valkey_enabled }}
     namespace: {{ .Values.namespace }}
     chart: valkey/valkey
-
-  - name: grafana
-    installed: false
-    namespace: {{ .Values.namespace }}
-    chart: grafana/grafana
-    version: 9.2.10
-    values:
-      - ingress:
-          enabled: true
-          annotations:
-            cert-manager.io/cluster-issuer: letsencrypt-prod
-          hosts:
-            - {{ .Values.dashboard.domain_prefix }}.{{ .Values | get "hostname" "localhost" }}
-          path: /
-          tls:
-          - hosts:
-            - {{ .Values.dashboard.domain_prefix }}.{{ .Values | get "hostname" "localhost" }}
-            secretName: {{ .Values.dashboard.domain_prefix }}.{{ .Values | get "hostname" "localhost" }}
-
-        persistence:
-          enabled: true
-        datasources:
-          datasources.yaml:
-            apiVersion: 1
-            datasources:
-              - name: Urbalytix Database
-                type: postgres
-                editable: true
-                url: {{ .Values.namespace }}-postgresql.{{ .Values.namespace }}.svc.cluster.local:5432
-                user: urbalytix
-                database: urbalytix
-                secureJsonData:
-                  password: '{{ .Values.dbpasswords.urbalytix }}'
-        assertNoLeakedSecrets: false
-        rbac:
-          create: false
-        grafana.ini:
-          server:
-            root_url: http{{- if .Values.tls }}s{{- end }}://{{ .Values.dashboard.domain_prefix }}.{{ .Values | get "hostname" "localhost" }}/
-          auth.generic_oauth:
-            enabled: true
-            name: Keycloak
-            allow_sign_up: true
-            scopes: openid profile email
-            client_id: urbalytix
-            client_secret: {{ .Values.auth.client_secret }}
-            auth_url: 'http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values | get "hostname" "localhost" }}/realms/urbalytix/protocol/openid-connect/auth'
-            token_url: 'http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values | get "hostname" "localhost" }}/realms/urbalytix/protocol/openid-connect/token'
-            api_url: 'http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values | get "hostname" "localhost" }}/realms/urbalytix/protocol/openid-connect/userinfo'
-            role_attribute_path: contains(roles[*], 'admin') && 'Admin' || contains(roles[*], 'dev') && 'Editor' || 'Viewer'
-            allow_assign_grafana_admin: true
