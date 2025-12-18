@@ -77,10 +77,10 @@ releases:
     installed: true
     namespace: {{ .Values.namespace }}
     chart: starwitorg/urbalytix-chart 
-    version: 0.4.2
+    version: 0.4.3
     values:
       - image:
-          tag: 0.4.2
+          tag: 0.4.3
         app:
           context_path: {{ .Values.app.context_path | default "" }}
           feature_collection:
@@ -137,8 +137,8 @@ releases:
             -- Create schemata, users and extenions
             CREATE EXTENSION IF NOT EXISTS timescaledb;
             CREATE EXTENSION postgis;
-            CREATE USER urbalytix WITH PASSWORD '{{ .Values.dbpasswords.urbalytix }}';    
-            CREATE DATABASE "urbalytix" owner urbalytix;
+            CREATE USER urbalytix WITH PASSWORD '{{ .Values.dbpasswords.urbalytix }}';
+            SELECT 'CREATE DATABASE urbalytix' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'urbalytix')\gexec
 
           init_tables: |  
             -- empty
