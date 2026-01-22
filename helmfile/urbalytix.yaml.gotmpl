@@ -77,10 +77,10 @@ releases:
     installed: true
     namespace: {{ .Values.namespace }}
     chart: starwitorg/urbalytix-chart 
-    version: 1.0.0
+    version: 1.0.1
     values:
       - image:
-          tag: 1.0.0
+          tag: 1.0.1
         app:
           context_path: {{ .Values.app.context_path | default "" }}
           feature_collection:

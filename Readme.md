@@ -21,6 +21,13 @@ Installation:
 ## Docker Compose
 TODO
 
+## Deployment preparations
+
+Backup database
+```bash
+pg_dump -h hostname -p 5432 -U postgres -Fc urbalytix > 2026-01-22-urbalytix.dump
+```
+
 # License
 
 Project is licensed under AGPL 3 and the license can be found [here](LICENSE). This component is part of a publicly funded project by the city of Wolfsburg and thus usage in your community is very much encouraged. It is part of a group of software modules that shall help communities to analyze urban space and to gain statistical insights. 
