@@ -13,9 +13,9 @@ Installation:
 3. Run Helmfile deployment
     ```bash
     # compute changes to cluster
-    helmfile -e environment diff -f urbalytix.yaml 
+    helmfile -e environment diff -f urbalytix.yaml.gotmpl
     # run actual deployment
-    helmfile -e default apply -f urbalytix.yaml 
+    helmfile -e default apply -f urbalytix.yaml.gotmpl
     ```
 
 ## Docker Compose
