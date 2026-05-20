@@ -14,19 +14,9 @@ environments:
   default:
     values:
       - namespace: urbalytix
-        hostname: {{ requiredEnv "HOSTNAME" }}
-
-        components:
-          urbalytix: true
-          timescaledb: true
-          valkey: true
-        component_versions:
-          urbalytix: 1.2.1
-          timescaledb: 1.2.4
-
+        hostname: cluster.local
         tls: false
         auth:
-          client_name: {{ requiredEnv "CLIENT_NAME" }}
           client_secret: {{ requiredEnv "CLIENT_SECRET" }}
           keycloakRealmUrlInternal: http://keycloak.auth.svc.cluster.local/realms/urbalytix
           keycloakRealmUrlExternal: https://auth.cluster.local/realms/urbalytix
@@ -35,7 +25,7 @@ environments:
           context_path: ""
           feature_collection:
             enabled: true
-            endpoint: {{ requiredEnv "FEATURE_COLLECTION_URL" }}
+            endpoint: https://www.was-wob.de/apiNodes
             secret: {{ requiredEnv "FEATURE_COLLECTION_SECRET" }}
           spring_data: # Configuration to connect to Redis/ValKey
             redis_active: true # if true connection config is used
@@ -48,91 +38,46 @@ environments:
         dbpasswords: 
           postgres: {{ requiredEnv "DB_ROOT_PASSWORD" }}
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
+        dashboard:
+          domain_prefix: grafana
         valkey_enabled: true
-
-  staging:
+  wob-staging:
     values:
       - namespace: urbalytix
-        hostname: {{ requiredEnv "HOSTNAME" }}
-
-        components:
-          urbalytix: true
-          timescaledb: true
-          valkey: true        
-        component_versions:
-          urbalytix: 1.2.1
-          timescaledb: 1.2.4
-
+        hostname: staging.data-wolfsburg.de
         tls: false
         auth:
-          client_name: {{ requiredEnv "CLIENT_NAME" }}
           client_secret: {{ requiredEnv "CLIENT_SECRET" }}
-          keycloakRealmUrlInternal: https://auth-ng.staging.data-wolfsburg.de/auth/realms/inyo
-          keycloakRealmUrlExternal: https://auth-ng.staging.data-wolfsburg.de/auth/realms/inyo
+          keycloakRealmUrlInternal: http://keycloak.observatory-data.svc.cluster.local/realms/urbalytix
+          keycloakRealmUrlExternal: https://auth.staging.data-wolfsburg.de/realms/urbalytix
 
         app:
           context_path: ""
           feature_collection:
             enabled: true
-            endpoint: {{ requiredEnv "FEATURE_COLLECTION_URL" }}
+            endpoint: https://www.was-wob.de/apiNodes
             secret: {{ requiredEnv "FEATURE_COLLECTION_SECRET" }}
           spring_data: # Configuration to connect to Redis/ValKey
             redis_active: true # if true connection config is used
             stream_prefix: aggregator
-            redis_host: valkey
+            redis_host: valkey-primary.observatory-data.svc.cluster.local
             redis_port: 6379
             aggregator_stream_prefix: aggregator # if aggregation messages are published under a different name
             positionsource_stream_prefix: positionsource # if position messages are published under a different name
             detection_stream_prefix: objectdetector # if detection messages are published under a different name
         dbpasswords: 
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
-        valkey_enabled: true # false means there is already a valkey/redis instance
-
-  prod:
-    values:
-      - namespace: urbalytix
-        hostname: {{ requiredEnv "HOSTNAME" }}
-
-        components:
-          urbalytix: false
-          timescaledb: true
-          valkey: true        
-        component_versions:
-          urbalytix: 1.2.1
-          timescaledb: 1.2.4
-
-        tls: false
-        auth:
-          client_name: {{ requiredEnv "CLIENT_NAME" }}
-          client_secret: {{ requiredEnv "CLIENT_SECRET" }}
-          keycloakRealmUrlInternal: https://auth-ng.data-wolfsburg.de/auth/realms/inyo
-          keycloakRealmUrlExternal: https://auth-ng.data-wolfsburg.de/auth/realms/inyo
-
-        app:
-          context_path: ""
-          feature_collection:
-            enabled: true
-            endpoint: {{ requiredEnv "FEATURE_COLLECTION_URL" }}
-            secret: {{ requiredEnv "FEATURE_COLLECTION_SECRET" }}
-          spring_data: # Configuration to connect to Redis/ValKey
-            redis_active: true # if true connection config is used
-            stream_prefix: aggregator
-            redis_host: valkey.urbalytix.svc.cluster.local
-            redis_port: 6379
-            aggregator_stream_prefix: aggregator # if aggregation messages are published under a different name
-            positionsource_stream_prefix: positionsource # if position messages are published under a different name
-            detection_stream_prefix: objectdetector # if detection messages are published under a different name
-        dbpasswords: 
-          urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
-        valkey_enabled: true # false means there is already a valkey/redis instance
+        dashboard:
+          domain_prefix: grafana
+        valkey_enabled: false # means there is already a valkey/redis instance
 
 ---
 releases:
   - name: urbalytix
-    installed: {{ .Values.components.urbalytix }}
+    installed: true
     namespace: {{ .Values.namespace }}
     chart: starwitorg/urbalytix-chart 
-    version: {{ .Values.component_versions.urbalytix }}
+    version: 1.2.1
     values:
       - app:
           context_path: {{ .Values.app.context_path | default "" }}
@@ -143,7 +88,7 @@ releases:
           spring_data: # Configuration to connect to Redis/ValKey
             redis_active: {{ .Values.app.spring_data.redis_active | default false}}
             stream_prefix: {{ .Values.app.spring_data.stream_prefix | default "aggregator" }}
-            redis_host: {{ .Values.app.spring_data.redis_host | default "valkey.urbalytix.svc.cluster.local" }}
+            redis_host: {{ .Values.app.spring_data.redis_host | default "valkey-primary.observatory-data.svc.cluster.local" }}
             redis_port: {{ .Values.app.spring_data.redis_port | default 6379 | int }}
             aggregator_stream_prefix: {{ .Values.app.spring_data.aggregator_stream_prefix | default "aggregator" }}
             positionsource_stream_prefix: {{ .Values.app.spring_data.positionsource_stream_prefix | default "positionsource" }}
@@ -152,7 +97,7 @@ releases:
           enabled: true
           keycloakRealmUrlInternal: {{ .Values.auth.keycloakRealmUrlInternal }}
           keycloakRealmUrlExternal: {{ .Values.auth.keycloakRealmUrlExternal }}
-          clientId: {{ .Values.auth.client_name }}
+          clientId: urbalytix
           clientSecret: {{ .Values.auth.client_secret }}
         database:
           hostname: timescaledb-chart-timescale.{{ .Values.namespace }}.svc.cluster.local
@@ -164,23 +109,23 @@ releases:
         ingress:
           enabled: true
           hosts:
-            - host: {{ .Values.hostname }}
+            - host: urbalytix.{{ .Values.hostname }}
               paths:
                 - path: /
                   pathType: ImplementationSpecific
           tls:
             - hosts:
-              - {{ .Values.hostname }}
+              - spc.{{ .Values.hostname }}
               secretName: urbalytix.{{ .Values.hostname }}
         extraEnv: |
           - name: SERVER_COMPRESSION_ENABLED
             value: "true"
 
   - name: timescale
-    installed: {{ .Values.components.timescaledb }}
+    installed: true
     namespace: {{ .Values.namespace }}
     chart: starwitorg/timescaledb-chart
-    version: {{ .Values.component_versions.timescaledb }}
+    version: 1.2.4
     values:
       - postgresql:
           password: {{ .Values.dbpasswords.urbalytix }}
@@ -188,6 +133,8 @@ releases:
           enabled: true
           init_user_db: |
             -- Create schemata, users and extenions
+            CREATE EXTENSION IF NOT EXISTS timescaledb;
+
             CREATE USER urbalytix WITH PASSWORD '{{ .Values.dbpasswords.urbalytix }}';
             SELECT 'CREATE DATABASE urbalytix owner urbalytix' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'urbalytix')\gexec
             \connect urbalytix
@@ -205,10 +152,6 @@ releases:
             cpu: "1000m"
 
   - name: valkey
-    installed: {{ .Values.components.valkey }}
+    installed: {{ .Values.valkey_enabled }}
     namespace: {{ .Values.namespace }}
     chart: valkey/valkey
-    values:
-      - service:
-          type: NodePort
-          nodePort: 30379
