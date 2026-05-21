@@ -172,6 +172,10 @@ releases:
             cpu: "1000m"
 
   - name: valkey
-    installed: {{ .Values.valkey_enabled }}
+    installed: {{ .Values.components.valkey }}
     namespace: {{ .Values.namespace }}
     chart: valkey/valkey
+    values:
+      - service:
+          type: NodePort
+          nodePort: 30379

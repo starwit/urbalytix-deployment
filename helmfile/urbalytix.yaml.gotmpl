@@ -48,7 +48,6 @@ environments:
         dbpasswords: 
           postgres: {{ requiredEnv "DB_ROOT_PASSWORD" }}
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
-        valkey_enabled: true
 
   staging:
     values:
@@ -86,7 +85,6 @@ environments:
             detection_stream_prefix: objectdetector # if detection messages are published under a different name
         dbpasswords: 
           urbalytix: {{ requiredEnv "DB_URBALYTIX_SECRET" }}
-        valkey_enabled: true # false means there is already a valkey/redis instance
 
   prod:
     values:
