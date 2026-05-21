@@ -15,11 +15,21 @@ environments:
     values:
       - namespace: urbalytix
         hostname: cluster.local
+
+        components:
+          urbalytix: true
+          timescaledb: true
+          valkey: true        
+        component_versions:
+          urbalytix: 1.2.1
+          timescaledb: 1.2.4
+
         tls: false
         auth:
+          client_name: {{ requiredEnv "CLIENT_NAME" }}
           client_secret: {{ requiredEnv "CLIENT_SECRET" }}
-          keycloakRealmUrlInternal: http://keycloak.auth.svc.cluster.local/realms/urbalytix
-          keycloakRealmUrlExternal: https://auth.cluster.local/realms/urbalytix
+          keycloakRealmUrlInternal: https://auth-ng.staging.data-wolfsburg.de/auth/realms/urbalytix
+          keycloakRealmUrlExternal: https://auth-ng.staging.data-wolfsburg.de/auth/realms/urbalytix
 
         app:
           context_path: ""
@@ -44,18 +54,28 @@ environments:
   wob-staging:
     values:
       - namespace: urbalytix
-        hostname: staging.data-wolfsburg.de
-        tls: false
+        hostname: {{ requiredEnv "HOSTNAME" }}
+
+        components:
+          urbalytix: true
+          timescaledb: true
+          valkey: true        
+        component_versions:
+          urbalytix: 1.2.1
+          timescaledb: 1.2.4
+
+        tls: true
         auth:
+          client_name: {{ requiredEnv "CLIENT_NAME" }}
           client_secret: {{ requiredEnv "CLIENT_SECRET" }}
-          keycloakRealmUrlInternal: http://keycloak.observatory-data.svc.cluster.local/realms/urbalytix
-          keycloakRealmUrlExternal: https://auth.staging.data-wolfsburg.de/realms/urbalytix
+          keycloakRealmUrlInternal: https://auth-ng.staging.data-wolfsburg.de/auth/realms/urbalytix
+          keycloakRealmUrlExternal: https://auth-ng.staging.data-wolfsburg.de/auth/realms/urbalytix
 
         app:
           context_path: ""
           feature_collection:
             enabled: true
-            endpoint: https://www.was-wob.de/apiNodes
+            endpoint: {{ requiredEnv "FEATURE_COLLECTION_URL" }}
             secret: {{ requiredEnv "FEATURE_COLLECTION_SECRET" }}
           spring_data: # Configuration to connect to Redis/ValKey
             redis_active: true # if true connection config is used
@@ -74,10 +94,10 @@ environments:
 ---
 releases:
   - name: urbalytix
-    installed: true
+    installed: {{ .Values.components.urbalytix }}
     namespace: {{ .Values.namespace }}
     chart: starwitorg/urbalytix-chart 
-    version: 1.2.1
+    version: {{ .Values.component_versions.urbalytix }}
     values:
       - app:
           context_path: {{ .Values.app.context_path | default "" }}
@@ -122,10 +142,10 @@ releases:
             value: "true"
 
   - name: timescale
-    installed: true
+    installed: {{ .Values.components.timescaledb }}
     namespace: {{ .Values.namespace }}
     chart: starwitorg/timescaledb-chart
-    version: 1.2.4
+    version: {{ .Values.component_versions.timescaledb }}
     values:
       - postgresql:
           password: {{ .Values.dbpasswords.urbalytix }}
